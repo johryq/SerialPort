@@ -1,3 +1,4 @@
+import { Buffer } from 'node:buffer';
 import { SendType, ReceiveType } from './setType';
 
 export interface SendDataType {
@@ -408,5 +409,8 @@ export class DataParse {
     return array.buffer;
   }
 
+  BufferToStringHex(bf:Buffer){
+    return String.fromCharCode.apply(null, new Uint8Array(bf))
+  }
 }
 

@@ -1,6 +1,6 @@
-import  { MQH_3Y4Y_Receive_DP }  from './MQH_3Y4Y_DP';
+import  { MQH_3Y4Y_Receive_DP, MQH_3Y4Y_ReqCmd, MQH_3Y4Y_Send_DP }  from './MQH_3Y4Y_DP';
 // import { UdpClient } from '../udpClient';
-import {IAmbientParameterMeter, IDeviceReturn} from '../type/IDevice'
+import {IAmbientParameterMeter, IAPMData, IDeviceReturn} from '../type/IDevice'
 import { UDPClient } from '../common/UDPClient'
 import { deviceClassify, unitType } from '../type/DeviceTypeEnum';
 
@@ -20,9 +20,8 @@ export class MQH_3Y4Y implements IAmbientParameterMeter {
     this.udpClient = new UDPClient()
   }
   // 运行
-  launch(){
-    return this.setResultData2()
-  };
+  // launch(){
+  // };
   // 停止
   // stop: () => IDeviceReturn;
   // 重启
@@ -33,20 +32,17 @@ export class MQH_3Y4Y implements IAmbientParameterMeter {
   async getDevInfo(){
       // const reqResult = this.udpClient.sendMsg2(MQH_3Y4Y_ReqCmd.Test)   
       const reqResult = await this.udpClient.sendMsg(MQH_3Y4Y_ReqCmd.Test)   
-
-      if(reqResult ==='' || reqResult === undefined){
+      if(reqResult === undefined){
         return({state:0,data:'获取数据请求失败'})
       }else {
         const data = MQH_3Y4Y_Receive_DP(reqResult)
         return({state:0,data})
-      }
-    // console.log(p);
-    
+      }    
   };
   // 获取设备实时信息
   async getRealTimeData(){
     const reqResult = await this.udpClient.sendMsg(MQH_3Y4Y_ReqCmd.Test)      
-    if(reqResult ==='' || reqResult === undefined){
+    if(reqResult === undefined){
       return({state:0,data:'获取数据请求失败'})
     }else {
       const data = MQH_3Y4Y_Receive_DP(reqResult)
@@ -58,10 +54,36 @@ export class MQH_3Y4Y implements IAmbientParameterMeter {
   getRealTimeStatus(){
     return this.setResultData()
   };
+
   // 校准
-  calibration(){
-    return this.setResultData()
+  async calibration(data:IAPMData){
+    let returnArray = new Array<any>
+    const sendCmdArray:IAPMData =  MQH_3Y4Y_Send_DP(data)
+    
+    returnArray.push(await this.calibrationResultData(sendCmdArray.atmosherePressure))    
+    returnArray.push(await this.calibrationResultData(sendCmdArray.humidity))
+    returnArray.push(await this.calibrationResultData(sendCmdArray.temperature))
+    return {state:1, data:{
+      'humidity': returnArray[1],
+      'temperature': returnArray[2],
+      'atmosherePressure': returnArray[0]
+    }}
   };
+
+
+  async calibrationResultData(sendCmd:string){
+    const r1 = await this.udpClient.sendMsg(sendCmd) 
+    if(r1 === undefined){
+      return '请求设备失败'
+    }else {
+      const r1s = MQH_3Y4Y_Receive_DP(r1)
+      if(r1s){
+        return '校准成功'
+      }else{
+        return '校准失败'
+      }
+    }
+  }
 
   setResultData(){
     return new Promise( (resolve,reject) => {
@@ -74,6 +96,7 @@ export class MQH_3Y4Y implements IAmbientParameterMeter {
       data: {}
     }
   }
+
   getUDPClientResult(): Promise<any>{
     return new Promise( (resolve,reject)  => {
       let resMsg
@@ -99,20 +122,5 @@ export enum MQH_3Y4Y_CmdName {
   calibration = 'calibration'
 }
 
-enum MQH_3Y4Y_ReqCmd {
-  Temperature = '215105',
-  // 湿度 humidity
-  Humidity = '215205',
-  // 气压 kPa
-  KPa = '215305',
-  // 油温 Oil temperature
-  OilTemperature = '216105',
 
-  Test = '2150038c',
-  Version = '21550387',
-  Reset ='21560386',
-  GetNumber = '21580384',
-  HandShake = '21630379',
-  Test4Y = '21640378'
-}
 

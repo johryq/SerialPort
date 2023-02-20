@@ -8,6 +8,7 @@ app.use('*', (req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*')
   next()
 })
+app.use(express.urlencoded({ extended:true })); 
 // 测试
 app.get('/', async (req: Request, res: Response) => {
   res.send('server is runing')
